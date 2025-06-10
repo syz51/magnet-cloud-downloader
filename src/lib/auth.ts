@@ -2,9 +2,12 @@ import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins";
+import { Resend } from "resend";
 
 import { db } from "@/server/db";
 import { env } from "@/env";
+
+const resend = new Resend();
 
 export const auth = betterAuth({
   database: drizzleAdapter(db, {
@@ -18,18 +21,47 @@ export const auth = betterAuth({
   },
   plugins: [
     magicLink({
-      sendMagicLink: async ({ email, token, url }, request) => {
-        // TODO: Implement your email sending logic here
-        // For now, you can log the magic link URL to the console
-        console.log(`Magic link for ${email}: ${url}`);
+      sendMagicLink: async ({ email, url }) => {
+        try {
+          const { data, error } = await resend.emails.send({
+            from: "Magic Link <onboarding@resend.dev>", // Replace with your verified domain
+            to: [email],
+            subject: "Sign in to your account",
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2>Sign in to your account</h2>
+                <p>Click the button below to sign in to your account. This link will expire in 24 hours.</p>
+                <a href="${url}" style="
+                  display: inline-block;
+                  background-color: #007bff;
+                  color: white;
+                  padding: 12px 24px;
+                  text-decoration: none;
+                  border-radius: 5px;
+                  margin: 20px 0;
+                ">Sign In</a>
+                <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+                <p style="word-break: break-all;">${url}</p>
+                <hr style="margin: 30px 0;">
+                <p style="color: #666; font-size: 14px;">
+                  If you didn't request this email, you can safely ignore it.
+                </p>
+              </div>
+            `,
+          });
 
-        // Replace this with your actual email sending implementation
-        // Example:
-        // await sendEmail({
-        //   to: email,
-        //   subject: "Sign in to your account",
-        //   html: `<p>Click <a href="${url}">here</a> to sign in to your account.</p>`
-        // });
+          if (error) {
+            console.error("Failed to send magic link email:", error);
+            throw new Error("Failed to send magic link email");
+          }
+
+          console.log(
+            `Magic link email sent successfully to ${email} with ID: ${data?.id}`,
+          );
+        } catch (error) {
+          console.error("Error sending magic link email:", error);
+          throw error;
+        }
       },
     }),
     nextCookies(), // This should be the last plugin in the array
