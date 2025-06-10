@@ -3,6 +3,24 @@
 import { useSession, signOut } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  User,
+  Calendar,
+  Settings,
+  Download,
+  Shield,
+  LogOut,
+  Loader2,
+} from "lucide-react";
 
 export default function DashboardPage() {
   const { data: session, isPending } = useSession();
@@ -26,8 +44,11 @@ export default function DashboardPage() {
 
   if (isPending) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[#2e026d] to-[#15162c]">
-        <div className="text-xl text-white">Loading...</div>
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span className="text-lg">Loading...</span>
+        </div>
       </div>
     );
   }
@@ -37,113 +58,215 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#2e026d] to-[#15162c]">
+    <div className="from-background to-muted/20 min-h-screen bg-gradient-to-b">
       <div className="container mx-auto px-4 py-8">
-        <div className="mx-auto max-w-4xl">
-          <div className="rounded-xl border border-white/20 bg-white/10 p-8 backdrop-blur-lg">
-            <div className="mb-8 flex items-start justify-between">
-              <div>
-                <h1 className="mb-2 text-3xl font-bold text-white">
-                  Welcome to your Dashboard
-                </h1>
-                <p className="text-white/70">
-                  Manage your account and access your content
-                </p>
-              </div>
-              <button
-                onClick={handleSignOut}
-                className="rounded-md border border-red-500/50 bg-red-500/20 px-4 py-2 text-red-200 transition-colors hover:bg-red-500/30"
-              >
-                Sign Out
-              </button>
+        <div className="mx-auto max-w-6xl">
+          {/* Header */}
+          <div className="mb-8 flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">
+                Welcome back, {session.user.name || "User"}!
+              </h1>
+              <p className="text-muted-foreground">
+                Manage your account and access your content
+              </p>
             </div>
-
-            <div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2">
-              <div className="rounded-lg border border-white/10 bg-white/5 p-6">
-                <h2 className="mb-4 text-xl font-semibold text-white">
-                  User Information
-                </h2>
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-white/60">Name:</span>
-                    <p className="font-medium text-white">
-                      {session.user.name || "Not provided"}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-white/60">Email:</span>
-                    <p className="font-medium text-white">
-                      {session.user.email}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-white/60">User ID:</span>
-                    <p className="font-mono text-sm font-medium text-white">
-                      {session.user.id}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-white/60">Email Verified:</span>
-                    <p className="font-medium text-white">
-                      {session.user.emailVerified ? "Yes" : "No"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="rounded-lg border border-white/10 bg-white/5 p-6">
-                <h2 className="mb-4 text-xl font-semibold text-white">
-                  Session Information
-                </h2>
-                <div className="space-y-3">
-                  <div>
-                    <span className="text-white/60">Session ID:</span>
-                    <p className="font-mono text-sm font-medium text-white">
-                      {session.session.id}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-white/60">Expires At:</span>
-                    <p className="font-medium text-white">
-                      {new Date(session.session.expiresAt).toLocaleString()}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-white/60">Created At:</span>
-                    <p className="font-medium text-white">
-                      {new Date(session.session.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-lg border border-white/10 bg-white/5 p-6">
-              <h2 className="mb-4 text-xl font-semibold text-white">
-                Quick Actions
-              </h2>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                <button className="rounded-lg border border-[hsl(280,100%,70%)]/30 bg-[hsl(280,100%,70%)]/20 p-4 text-white transition-colors hover:bg-[hsl(280,100%,70%)]/30">
-                  <div className="text-sm font-medium">Profile Settings</div>
-                  <div className="mt-1 text-xs text-white/60">
-                    Update your profile information
-                  </div>
-                </button>
-                <button className="rounded-lg border border-blue-500/30 bg-blue-500/20 p-4 text-white transition-colors hover:bg-blue-500/30">
-                  <div className="text-sm font-medium">Download Manager</div>
-                  <div className="mt-1 text-xs text-white/60">
-                    Access magnet cloud downloader
-                  </div>
-                </button>
-                <button className="rounded-lg border border-green-500/30 bg-green-500/20 p-4 text-white transition-colors hover:bg-green-500/30">
-                  <div className="text-sm font-medium">Account Security</div>
-                  <div className="mt-1 text-xs text-white/60">
-                    Manage your security settings
-                  </div>
-                </button>
-              </div>
-            </div>
+            <Button onClick={handleSignOut} variant="outline" className="w-fit">
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
           </div>
+
+          {/* Stats Cards */}
+          <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Account Status
+                </CardTitle>
+                <User className="text-muted-foreground h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">Active</div>
+                <Badge
+                  variant={session.user.emailVerified ? "default" : "secondary"}
+                  className="mt-1"
+                >
+                  {session.user.emailVerified ? "Verified" : "Unverified"}
+                </Badge>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Downloads</CardTitle>
+                <Download className="text-muted-foreground h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">0</div>
+                <p className="text-muted-foreground text-xs">
+                  Active downloads
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  Storage Used
+                </CardTitle>
+                <Download className="text-muted-foreground h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">0 GB</div>
+                <p className="text-muted-foreground text-xs">of unlimited</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Security</CardTitle>
+                <Shield className="text-muted-foreground h-4 w-4" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">Secure</div>
+                <p className="text-muted-foreground text-xs">Magic link auth</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Main Content */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* User Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <User className="mr-2 h-5 w-5" />
+                  User Information
+                </CardTitle>
+                <CardDescription>
+                  Your account details and personal information
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Name:</span>
+                    <span className="text-muted-foreground text-sm">
+                      {session.user.name || "Not provided"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Email:</span>
+                    <span className="text-muted-foreground text-sm">
+                      {session.user.email}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">User ID:</span>
+                    <span className="text-muted-foreground font-mono text-sm">
+                      {session.user.id.slice(0, 8)}...
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Email Verified:</span>
+                    <Badge
+                      variant={
+                        session.user.emailVerified ? "default" : "secondary"
+                      }
+                    >
+                      {session.user.emailVerified ? "Yes" : "No"}
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Session Information */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Calendar className="mr-2 h-5 w-5" />
+                  Session Information
+                </CardTitle>
+                <CardDescription>
+                  Details about your current session
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Session ID:</span>
+                    <span className="text-muted-foreground font-mono text-sm">
+                      {session.session.id.slice(0, 8)}...
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Expires At:</span>
+                    <span className="text-muted-foreground text-sm">
+                      {new Date(session.session.expiresAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium">Created At:</span>
+                    <span className="text-muted-foreground text-sm">
+                      {new Date(session.session.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Actions */}
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+              <CardDescription>
+                Common tasks and settings for your account
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                <Button
+                  variant="outline"
+                  className="h-auto flex-col space-y-2 p-6"
+                >
+                  <Settings className="h-6 w-6" />
+                  <div className="text-center">
+                    <div className="font-medium">Profile Settings</div>
+                    <div className="text-muted-foreground text-xs">
+                      Update your profile information
+                    </div>
+                  </div>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-auto flex-col space-y-2 p-6"
+                >
+                  <Download className="h-6 w-6" />
+                  <div className="text-center">
+                    <div className="font-medium">Download Manager</div>
+                    <div className="text-muted-foreground text-xs">
+                      Access magnet cloud downloader
+                    </div>
+                  </div>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-auto flex-col space-y-2 p-6 sm:col-span-2 lg:col-span-1"
+                >
+                  <Shield className="h-6 w-6" />
+                  <div className="text-center">
+                    <div className="font-medium">Account Security</div>
+                    <div className="text-muted-foreground text-xs">
+                      Manage your security settings
+                    </div>
+                  </div>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
