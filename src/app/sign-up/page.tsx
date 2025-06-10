@@ -21,6 +21,7 @@ export default function SignUpPage() {
       // For magic link, we use signIn.magicLink which handles both sign-in and sign-up
       const result = await signIn.magicLink({
         email,
+        name,
         callbackURL: "/dashboard",
       });
 
