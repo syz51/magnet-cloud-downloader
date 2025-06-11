@@ -1,11 +1,10 @@
+import { env } from "@/env";
+import { convexAdapter } from "@better-auth-kit/convex";
 import { betterAuth } from "better-auth";
 import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins";
-import { Resend } from "resend";
-import { convexAdapter } from "@better-auth-kit/convex";
 import { ConvexHttpClient } from "convex/browser";
-
-import { env } from "@/env";
+import { Resend } from "resend";
 
 const resend = new Resend();
 const convex = new ConvexHttpClient(env.NEXT_PUBLIC_CONVEX_URL);
@@ -51,7 +50,7 @@ export const auth = betterAuth({
 
           if (error) {
             console.error("Error sending magic link:", error);
-            throw error;
+            throw new Error(`Failed to send magic link: ${error.message}`);
           }
 
           console.log("Magic link sent successfully:", data);

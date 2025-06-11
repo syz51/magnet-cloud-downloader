@@ -1,8 +1,7 @@
 "use client";
 
-import { useSession, signOut } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { PostsList } from "@/components/posts-list";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,17 +10,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { signOut, useSession } from "@/lib/auth-client";
 import {
-  User,
   Calendar,
-  Settings,
   Download,
-  Shield,
-  LogOut,
   Loader2,
+  LogOut,
+  Settings,
+  Shield,
+  User,
 } from "lucide-react";
-import { PostsList } from "@/components/posts-list";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function DashboardPage() {
   const { data: session, isPending } = useSession();

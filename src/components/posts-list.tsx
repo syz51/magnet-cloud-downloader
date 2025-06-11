@@ -1,12 +1,13 @@
 "use client";
 
-import { useQuery, useMutation } from "convex/react";
-import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useState } from "react";
+import { Input } from "@/components/ui/input";
+import { useMutation, useQuery } from "convex/react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 export function PostsList() {
   const [newPostName, setNewPostName] = useState("");
@@ -22,8 +23,8 @@ export function PostsList() {
     }
   };
 
-  const handleDeletePost = (postId: string) => {
-    deletePost({ id: postId as any });
+  const handleDeletePost = async (postId: Id<"posts">) => {
+    await deletePost({ id: postId });
   };
 
   if (posts === undefined) {
@@ -73,7 +74,7 @@ export function PostsList() {
                 className="flex items-center justify-between rounded-lg border p-3"
               >
                 <div>
-                  <p className="font-medium">{post.name || "Untitled Post"}</p>
+                  <p className="font-medium">{post.name ?? "Untitled Post"}</p>
                   <p className="text-muted-foreground text-sm">
                     Created: {new Date(post.createdAt).toLocaleDateString()}
                   </p>
