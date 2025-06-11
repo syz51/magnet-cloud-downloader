@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "convex codegen && next build",
+    "build": "next build",
     "check": "next lint && tsc --noEmit",
     "convex:dev": "convex dev",
     "convex:deploy": "convex deploy",

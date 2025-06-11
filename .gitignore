@@ -10,7 +10,7 @@
 
 # Convex
 .env.local
-convex/_generated/
+# convex/_generated/
 
 # next.js
 /.next/
