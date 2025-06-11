@@ -8,10 +8,9 @@
 # testing
 /coverage
 
-# database
-/prisma/db.sqlite
-/prisma/db.sqlite-journal
-db.sqlite
+# Convex
+.env.local
+convex/_generated/
 
 # next.js
 /.next/

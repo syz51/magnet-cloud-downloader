@@ -21,6 +21,7 @@ import {
   LogOut,
   Loader2,
 } from "lucide-react";
+import { PostsList } from "@/components/posts-list";
 
 export default function DashboardPage() {
   const { data: session, isPending } = useSession();
@@ -216,6 +217,11 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
+          </div>
+
+          {/* Convex Demo */}
+          <div className="mt-6">
+            <PostsList />
           </div>
 
           {/* Quick Actions */}

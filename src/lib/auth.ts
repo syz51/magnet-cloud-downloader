@@ -1,18 +1,17 @@
 import { betterAuth } from "better-auth";
-import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
 import { magicLink } from "better-auth/plugins";
 import { Resend } from "resend";
+import { convexAdapter } from "@better-auth-kit/convex";
+import { ConvexHttpClient } from "convex/browser";
 
-import { db } from "@/server/db";
 import { env } from "@/env";
 
 const resend = new Resend();
+const convex = new ConvexHttpClient(env.NEXT_PUBLIC_CONVEX_URL);
 
 export const auth = betterAuth({
-  database: drizzleAdapter(db, {
-    provider: "sqlite",
-  }),
+  database: convexAdapter(convex),
   secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
   emailAndPassword: {
@@ -51,20 +50,18 @@ export const auth = betterAuth({
           });
 
           if (error) {
-            console.error("Failed to send magic link email:", error);
-            throw new Error("Failed to send magic link email");
+            console.error("Error sending magic link:", error);
+            throw error;
           }
 
-          console.log(
-            `Magic link email sent successfully to ${email} with ID: ${data?.id}`,
-          );
+          console.log("Magic link sent successfully:", data);
         } catch (error) {
-          console.error("Error sending magic link email:", error);
+          console.error("Failed to send magic link:", error);
           throw error;
         }
       },
     }),
-    nextCookies(), // This should be the last plugin in the array
+    nextCookies(),
   ],
 });
 
