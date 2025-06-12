@@ -21,8 +21,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { env } from "@/env";
 import { useSession } from "@/lib/auth-client";
-import { api } from "convex/_generated/api";
-import type { Id } from "convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import {
   AlertCircle,
@@ -41,6 +39,8 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { api } from "../../../../convex/_generated/api.js";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 interface QRCodeSession {
   qrcodeContent: string;
