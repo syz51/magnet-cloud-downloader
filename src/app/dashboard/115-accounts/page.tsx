@@ -176,6 +176,7 @@ export default function Accounts115Page() {
 
   // Query to poll QR code status
   const qrStatusQuery = useQuery({
+    // eslint-disable-next-line @tanstack/query/exhaustive-deps
     queryKey: ["qrStatus", qrSession?.uid],
     queryFn: async () => {
       if (!qrSession) return null;

@@ -11,7 +11,7 @@ export default tseslint.config(
     ignores: [".next"],
   },
   ...compat.extends("next/core-web-vitals"),
-  // ...pluginQuery.configs["flat/recommended"],
+  ...pluginQuery.configs["flat/recommended"],
   {
     files: ["**/*.ts", "**/*.tsx"],
     plugins: {},
