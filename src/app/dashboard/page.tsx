@@ -1,6 +1,5 @@
 "use client";
 
-import { PostsList } from "@/components/posts-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -244,11 +243,6 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
-          </div>
-
-          {/* Convex Demo */}
-          <div className="mt-6">
-            <PostsList />
           </div>
 
           {/* Quick Actions */}

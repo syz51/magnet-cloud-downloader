@@ -2,15 +2,6 @@ import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
 export default defineSchema({
-  // Your app tables
-  posts: defineTable({
-    name: v.optional(v.string()),
-    createdAt: v.number(),
-    updatedAt: v.optional(v.number()),
-  })
-    .index("by_name", ["name"])
-    .index("by_created_at", ["createdAt"]),
-
   // Drive115 credentials table to store user-specific 115driver credentials
   drive115_credentials: defineTable({
     userId: v.string(), // References user ID from Better Auth
