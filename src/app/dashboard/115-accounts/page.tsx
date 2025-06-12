@@ -21,7 +21,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { env } from "@/env";
 import { useSession } from "@/lib/auth-client";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation as useConvexMutation,
+  useQuery as useConvexQuery,
+} from "convex/react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -38,7 +42,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../../../../convex/_generated/api.js";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
@@ -106,36 +110,32 @@ const AccountSkeleton = () => (
 
 export default function Accounts115Page() {
   const { data: session } = useSession();
+  const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [accountName, setAccountName] = useState("");
   const [qrSession, setQrSession] = useState<QRCodeSession | null>(null);
-  const [qrStatus, setQrStatus] = useState<QRCodeStatus | null>(null);
   const [qrCodeImage, setQrCodeImage] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [pollingActive, setPollingActive] = useState(false);
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  // Track if login has been attempted to prevent multiple calls
+  const [loginAttempted, setLoginAttempted] = useState(false);
 
   // Convex queries and mutations
-  const credentials = useQuery(
+  const credentials = useConvexQuery(
     api.drive115_credentials.getUserCredentials,
     session?.user?.id ? { userId: session.user.id } : "skip",
   );
-  const createCredentials = useMutation(
+  const createCredentials = useConvexMutation(
     api.drive115_credentials.createCredentials,
   );
-  const deleteCredentials = useMutation(
+  const deleteCredentials = useConvexMutation(
     api.drive115_credentials.deleteCredentials,
   );
 
   // Your Go server endpoints (update these to match your actual endpoints)
   const GO_SERVER_BASE = `${env.NEXT_PUBLIC_GO_SERVER_URL}/api/v1/115`;
 
-  const startQRCodeLogin = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
+  // React Query mutations and queries for QR code flow
+  const startQRCodeMutation = useMutation({
+    mutationFn: async () => {
       // Call your Go server to start QR code session
       const response = await fetch(`${GO_SERVER_BASE}/qrcode/start`, {
         method: "POST",
@@ -148,80 +148,78 @@ export default function Accounts115Page() {
         throw new Error(`Failed to start QR session: ${response.statusText}`);
       }
 
-      const qrData = (await response.json()) as QRCodeSession;
+      return response.json() as Promise<QRCodeSession>;
+    },
+    onSuccess: async (qrData) => {
       setQrSession(qrData);
 
       // Generate QR code image
-      const qrImageResponse = await fetch(`${GO_SERVER_BASE}/qrcode/image`, {
+      try {
+        const qrImageResponse = await fetch(`${GO_SERVER_BASE}/qrcode/image`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ uid: qrData.uid }),
+        });
+
+        if (qrImageResponse.ok) {
+          const blob = await qrImageResponse.blob();
+          const imageUrl = URL.createObjectURL(blob);
+          setQrCodeImage(imageUrl);
+        }
+      } catch (err) {
+        console.error("Failed to generate QR code image:", err);
+      }
+    },
+  });
+
+  // Query to poll QR code status
+  const qrStatusQuery = useQuery({
+    queryKey: ["qrStatus", qrSession?.uid],
+    queryFn: async () => {
+      if (!qrSession) return null;
+
+      const response = await fetch(`${GO_SERVER_BASE}/qrcode/status`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ uid: qrData.uid }),
+        body: JSON.stringify({
+          uid: qrSession.uid,
+          time: qrSession.time,
+          sign: qrSession.sign,
+        }),
       });
 
-      if (qrImageResponse.ok) {
-        const blob = await qrImageResponse.blob();
-        const imageUrl = URL.createObjectURL(blob);
-        setQrCodeImage(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to check QR status: ${response.statusText}`);
       }
 
-      // Start polling for status
-      startPolling(qrData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to start QR login");
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      return response.json() as Promise<QRCodeStatus>;
+    },
+    enabled: !!qrSession && !loginAttempted,
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      // Stop polling if status is approved (2), expired (-1), or canceled (-2)
+      if (
+        data &&
+        (data.status === 2 || data.status === -1 || data.status === -2)
+      ) {
+        return false;
+      }
+      return 2000; // Poll every 2 seconds
+    },
+    refetchIntervalInBackground: true,
+  });
 
-  const startPolling = (session: QRCodeSession) => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-    }
+  // Mutation to complete login
+  const completeLoginMutation = useMutation({
+    mutationFn: async () => {
+      if (!qrSession) {
+        throw new Error("No QR session available");
+      }
 
-    setPollingActive(true);
-    pollingIntervalRef.current = setInterval(() => {
-      void (async () => {
-        try {
-          const response = await fetch(`${GO_SERVER_BASE}/qrcode/status`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              uid: session.uid,
-              time: session.time,
-              sign: session.sign,
-            }),
-          });
-
-          if (response.ok) {
-            const status = (await response.json()) as QRCodeStatus;
-            setQrStatus(status);
-
-            // If approved, attempt login
-            if (status.status === 2) {
-              // IsAllowed - QR code was scanned and approved
-              await completeLogin(session);
-            } else if (status.status === -1 || status.status === -2) {
-              // Expired or Canceled
-              stopPolling();
-              setError(status.msg || "QR code expired or was canceled");
-            }
-          }
-        } catch (err) {
-          console.error("Polling error:", err);
-        }
-      })();
-    }, 2000); // Poll every 2 seconds
-  };
-
-  const completeLogin = async (qrSession: QRCodeSession) => {
-    try {
-      stopPolling();
-
-      // Call your Go server to complete the login and get credentials
       const response = await fetch(`${GO_SERVER_BASE}/qrcode/login`, {
         method: "POST",
         headers: {
@@ -231,7 +229,6 @@ export default function Accounts115Page() {
           uid: qrSession.uid,
           sign: qrSession.sign,
           time: qrSession.time,
-          app: "web", // or whatever app type you prefer
         }),
       });
 
@@ -239,8 +236,9 @@ export default function Accounts115Page() {
         throw new Error(`Login failed: ${response.statusText}`);
       }
 
-      const loginResponse = (await response.json()) as QRCodeLoginResponse;
-
+      return response.json() as Promise<QRCodeLoginResponse>;
+    },
+    onSuccess: async (loginResponse) => {
       // Check if the login was successful
       if (!loginResponse.success) {
         throw new Error(`Login failed: ${loginResponse.message}`);
@@ -264,25 +262,26 @@ export default function Accounts115Page() {
       resetQRState();
       setIsDialogOpen(false);
       setAccountName("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to complete login");
-    }
-  };
+    },
+  });
 
-  const stopPolling = () => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
+  const { isPending: loginIsPending, mutate: doLogin } = completeLoginMutation;
+
+  useEffect(() => {
+    if (qrStatusQuery.data && !loginAttempted && !loginIsPending) {
+      if (qrStatusQuery.data.status === 2) {
+        setLoginAttempted(true);
+        doLogin();
+      }
     }
-    setPollingActive(false);
-  };
+  }, [qrStatusQuery.data, loginAttempted, loginIsPending, doLogin]);
 
   const resetQRState = () => {
-    stopPolling();
     setQrSession(null);
-    setQrStatus(null);
     setQrCodeImage(null);
-    setError(null);
+    setLoginAttempted(false);
+    // Stop the status query by invalidating it
+    queryClient.removeQueries({ queryKey: ["qrStatus"] });
   };
 
   const handleDeleteCredential = async (
@@ -339,12 +338,20 @@ export default function Accounts115Page() {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      stopPolling();
       if (qrCodeImage) {
         URL.revokeObjectURL(qrCodeImage);
       }
     };
   }, [qrCodeImage]);
+
+  // Get current error state from mutations and queries
+  const error =
+    startQRCodeMutation.error ??
+    qrStatusQuery.error ??
+    completeLoginMutation.error ??
+    null;
+  const isLoading =
+    startQRCodeMutation.isPending || completeLoginMutation.isPending;
 
   if (!session) {
     return null;
@@ -421,9 +428,9 @@ export default function Accounts115Page() {
                                 className="mx-auto rounded-lg border"
                               />
                               <div className="flex items-center justify-center space-x-2">
-                                {getStatusIcon(qrStatus?.status)}
+                                {getStatusIcon(qrStatusQuery.data?.status)}
                                 <span className="text-sm text-muted-foreground">
-                                  {getStatusText(qrStatus?.status)}
+                                  {getStatusText(qrStatusQuery.data?.status)}
                                 </span>
                               </div>
                             </div>
@@ -447,7 +454,11 @@ export default function Accounts115Page() {
                     {error && (
                       <div className="flex items-center space-x-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
                         <AlertCircle className="h-4 w-4" />
-                        <span>{error}</span>
+                        <span>
+                          {error instanceof Error
+                            ? error.message
+                            : "An error occurred"}
+                        </span>
                       </div>
                     )}
 
@@ -465,7 +476,7 @@ export default function Accounts115Page() {
                       </Button>
                       {!qrSession ? (
                         <Button
-                          onClick={startQRCodeLogin}
+                          onClick={() => startQRCodeMutation.mutate()}
                           disabled={isLoading || !accountName.trim()}
                         >
                           {isLoading ? (
@@ -478,8 +489,11 @@ export default function Accounts115Page() {
                       ) : (
                         <Button
                           variant="outline"
-                          onClick={() => startQRCodeLogin()}
-                          disabled={pollingActive}
+                          onClick={() => {
+                            resetQRState();
+                            startQRCodeMutation.mutate();
+                          }}
+                          disabled={isLoading}
                         >
                           <RefreshCw className="mr-2 h-4 w-4" />
                           Regenerate

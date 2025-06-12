@@ -1,7 +1,7 @@
 import "@/styles/globals.css";
 import { type Metadata } from "next";
 import { Geist } from "next/font/google";
-import { ConvexClientProvider } from "./convex-client-provider";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: "Magnet Cloud Downloader",
@@ -21,7 +21,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geist.variable}`}>
       <body className="font-sans antialiased">
-        <ConvexClientProvider>{children}</ConvexClientProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

@@ -1,4 +1,5 @@
 import { FlatCompat } from "@eslint/eslintrc";
+import pluginQuery from "@tanstack/eslint-plugin-query";
 import tseslint from "typescript-eslint";
 
 const compat = new FlatCompat({
@@ -10,6 +11,7 @@ export default tseslint.config(
     ignores: [".next"],
   },
   ...compat.extends("next/core-web-vitals"),
+  // ...pluginQuery.configs["flat/recommended"],
   {
     files: ["**/*.ts", "**/*.tsx"],
     plugins: {},
