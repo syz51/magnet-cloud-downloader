@@ -14,6 +14,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as betterAuth from "../betterAuth.js";
+import type * as drive115_credentials from "../drive115_credentials.js";
 import type * as posts from "../posts.js";
 
 /**
@@ -26,6 +27,7 @@ import type * as posts from "../posts.js";
  */
 declare const fullApi: ApiFromModules<{
   betterAuth: typeof betterAuth;
+  drive115_credentials: typeof drive115_credentials;
   posts: typeof posts;
 }>;
 export declare const api: FilterApi<

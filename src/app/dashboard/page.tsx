@@ -20,6 +20,7 @@ import {
   Shield,
   User,
 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
@@ -100,14 +101,14 @@ export default function DashboardPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Downloads</CardTitle>
+                <CardTitle className="text-sm font-medium">
+                  115 Accounts
+                </CardTitle>
                 <Download className="text-muted-foreground h-4 w-4" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">0</div>
-                <p className="text-muted-foreground text-xs">
-                  Active downloads
-                </p>
+                <p className="text-muted-foreground text-xs">Accounts linked</p>
               </CardContent>
             </Card>
 
@@ -132,6 +133,32 @@ export default function DashboardPage() {
               <CardContent>
                 <div className="text-2xl font-bold">Secure</div>
                 <p className="text-muted-foreground text-xs">Magic link auth</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="mb-8">
+            <Card>
+              <CardHeader>
+                <CardTitle>Quick Actions</CardTitle>
+                <CardDescription>
+                  Manage your accounts and start downloading
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-4">
+                  <Link href="/dashboard/115-accounts">
+                    <Button>
+                      <Settings className="mr-2 h-4 w-4" />
+                      Manage 115 Accounts
+                    </Button>
+                  </Link>
+                  <Button variant="outline" disabled>
+                    <Download className="mr-2 h-4 w-4" />
+                    Start Download
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           </div>
