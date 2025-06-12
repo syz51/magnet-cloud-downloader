@@ -62,6 +62,12 @@ interface Credential {
   kid: string;
 }
 
+interface QRCodeLoginResponse {
+  credentials: Credential;
+  success: boolean;
+  message: string;
+}
+
 // Add skeleton components after the existing imports
 const AccountSkeleton = () => (
   <Card>
@@ -123,7 +129,7 @@ export default function Accounts115Page() {
   );
 
   // Your Go server endpoints (update these to match your actual endpoints)
-  const GO_SERVER_BASE = env.NEXT_PUBLIC_GO_SERVER_URL;
+  const GO_SERVER_BASE = `${env.NEXT_PUBLIC_GO_SERVER_URL}/api/v1/115`;
 
   const startQRCodeLogin = async () => {
     try {
@@ -131,7 +137,7 @@ export default function Accounts115Page() {
       setError(null);
 
       // Call your Go server to start QR code session
-      const response = await fetch(`${GO_SERVER_BASE}/api/115/qrcode/start`, {
+      const response = await fetch(`${GO_SERVER_BASE}/qrcode/start`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -146,16 +152,13 @@ export default function Accounts115Page() {
       setQrSession(qrData);
 
       // Generate QR code image
-      const qrImageResponse = await fetch(
-        `${GO_SERVER_BASE}/api/115/qrcode/image`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ uid: qrData.uid }),
+      const qrImageResponse = await fetch(`${GO_SERVER_BASE}/qrcode/image`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({ uid: qrData.uid }),
+      });
 
       if (qrImageResponse.ok) {
         const blob = await qrImageResponse.blob();
@@ -181,20 +184,17 @@ export default function Accounts115Page() {
     pollingIntervalRef.current = setInterval(() => {
       void (async () => {
         try {
-          const response = await fetch(
-            `${GO_SERVER_BASE}/api/115/qrcode/status`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                uid: session.uid,
-                time: session.time.toString(),
-                sign: session.sign,
-              }),
+          const response = await fetch(`${GO_SERVER_BASE}/qrcode/status`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
             },
-          );
+            body: JSON.stringify({
+              uid: session.uid,
+              time: session.time,
+              sign: session.sign,
+            }),
+          });
 
           if (response.ok) {
             const status = (await response.json()) as QRCodeStatus;
@@ -202,7 +202,7 @@ export default function Accounts115Page() {
 
             // If approved, attempt login
             if (status.status === 2) {
-              // IsAllowed
+              // IsAllowed - QR code was scanned and approved
               await completeLogin(session);
             } else if (status.status === -1 || status.status === -2) {
               // Expired or Canceled
@@ -222,13 +222,15 @@ export default function Accounts115Page() {
       stopPolling();
 
       // Call your Go server to complete the login and get credentials
-      const response = await fetch(`${GO_SERVER_BASE}/api/115/qrcode/login`, {
+      const response = await fetch(`${GO_SERVER_BASE}/qrcode/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          account: qrSession.uid,
+          uid: qrSession.uid,
+          sign: qrSession.sign,
+          time: qrSession.time,
           app: "web", // or whatever app type you prefer
         }),
       });
@@ -237,7 +239,12 @@ export default function Accounts115Page() {
         throw new Error(`Login failed: ${response.statusText}`);
       }
 
-      const credential = (await response.json()) as Credential;
+      const loginResponse = (await response.json()) as QRCodeLoginResponse;
+
+      // Check if the login was successful
+      if (!loginResponse.success) {
+        throw new Error(`Login failed: ${loginResponse.message}`);
+      }
 
       // Save credentials to Convex
       if (!session?.user?.id) {
@@ -247,10 +254,10 @@ export default function Accounts115Page() {
       await createCredentials({
         userId: session.user.id,
         name: accountName || `115 Account ${Date.now()}`,
-        uid: credential.uid,
-        cid: credential.cid,
-        seid: credential.seid,
-        kid: credential.kid,
+        uid: loginResponse.credentials.uid,
+        cid: loginResponse.credentials.cid,
+        seid: loginResponse.credentials.seid,
+        kid: loginResponse.credentials.kid,
       });
 
       // Reset state and close dialog
