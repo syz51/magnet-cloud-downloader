@@ -153,10 +153,12 @@ export default function DashboardPage() {
                       Manage 115 Accounts
                     </Button>
                   </Link>
-                  <Button variant="outline" disabled>
-                    <Download className="mr-2 h-4 w-4" />
-                    Start Download
-                  </Button>
+                  <Link href="/dashboard/magnet-download">
+                    <Button variant="outline">
+                      <Download className="mr-2 h-4 w-4" />
+                      Start Download
+                    </Button>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
