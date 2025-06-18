@@ -18,9 +18,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { env } from "@/env";
 import { useSession } from "@/lib/auth-client";
-import { useMutation } from "@tanstack/react-query";
+import { downloadMagnetLinks } from "@/lib/magnet-download-actions";
 import { useQuery as useConvexQuery } from "convex/react";
 import {
   AlertCircle,
@@ -34,27 +33,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { api } from "../../../../convex/_generated/api.js";
-
-interface Drive115Credentials {
-  uid: string;
-  cid: string;
-  seid: string;
-  kid: string;
-}
-
-interface OfflineDownloadRequest {
-  credentials: Drive115Credentials;
-  urls: string[];
-  save_dir_id?: string;
-}
-
-interface OfflineDownloadResponse {
-  message: string;
-  hashes: string[];
-  count: number;
-}
 
 interface DownloadTask {
   id: string;
@@ -69,6 +49,7 @@ interface DownloadTask {
 export default function MagnetDownloadPage() {
   const { data: session } = useSession();
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
 
   // Form state
   const [magnetUrls, setMagnetUrls] = useState<string[]>([""]);
@@ -90,69 +71,11 @@ export default function MagnetDownloadPage() {
     session?.user?.id ? { userId: session.user.id } : "skip",
   );
 
-  // Go server endpoint
-  const GO_SERVER_BASE = `${env.NEXT_PUBLIC_GO_SERVER_URL}/api/v1/115`;
-
-  // Download mutation
-  const downloadMutation = useMutation({
-    mutationFn: async (downloadRequest: OfflineDownloadRequest) => {
-      const response = await fetch(`${GO_SERVER_BASE}/tasks/add`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(downloadRequest),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Download failed: ${response.status} ${errorText}`);
-      }
-
-      return response.json() as Promise<OfflineDownloadResponse>;
-    },
-    onSuccess: (data, variables) => {
-      const newTask: DownloadTask = {
-        id: Date.now().toString(),
-        urls: variables.urls,
-        status: "completed",
-        createdAt: new Date(),
-        hashes: data.hashes,
-        count: data.count,
-        message: data.message,
-      };
-      setDownloadTasks((prev) => [newTask, ...prev]);
-
-      // Reset form
-      setMagnetUrls([""]);
-      setSaveDirId("");
-      setIsDialogOpen(false);
-    },
-    onError: (error, variables) => {
-      const newTask: DownloadTask = {
-        id: Date.now().toString(),
-        urls: variables.urls,
-        status: "failed",
-        createdAt: new Date(),
-        message: error.message,
-      };
-      setDownloadTasks((prev) => [newTask, ...prev]);
-    },
-  });
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!selectedCredentialId) {
       alert("Please select a 115 account");
-      return;
-    }
-
-    const selectedCredential = credentials?.find(
-      (cred) => cred._id === selectedCredentialId,
-    );
-    if (!selectedCredential) {
-      alert("Selected credential not found");
       return;
     }
 
@@ -174,18 +97,72 @@ export default function MagnetDownloadPage() {
       return;
     }
 
-    const downloadRequest: OfflineDownloadRequest = {
-      credentials: {
-        uid: selectedCredential.uid,
-        cid: selectedCredential.cid,
-        seid: selectedCredential.seid,
-        kid: selectedCredential.kid,
-      },
+    // Add pending task immediately for UI feedback
+    const pendingTask: DownloadTask = {
+      id: Date.now().toString(),
       urls: validUrls,
-      save_dir_id: saveDirId || undefined,
+      status: "pending",
+      createdAt: new Date(),
     };
+    setDownloadTasks((prev) => [pendingTask, ...prev]);
 
-    downloadMutation.mutate(downloadRequest);
+    // Use server action with transition
+    startTransition(async () => {
+      try {
+        const result = await downloadMagnetLinks(
+          selectedCredentialId,
+          validUrls,
+          saveDirId || undefined,
+          session?.user?.id,
+        );
+
+        // Update the task with the result
+        setDownloadTasks((prev) =>
+          prev.map((task) =>
+            task.id === pendingTask.id
+              ? {
+                  ...task,
+                  status: result.success ? "completed" : "failed",
+                  hashes: result.data?.hashes,
+                  count: result.data?.count,
+                  message: result.success ? result.data?.message : result.error,
+                }
+              : task,
+          ),
+        );
+
+        if (result.success) {
+          // Reset form on success
+          setMagnetUrls([""]);
+          setSaveDirId("");
+          setSelectedCredentialId("");
+          setIsDialogOpen(false);
+        } else {
+          alert(`Download failed: ${result.error}`);
+        }
+      } catch (error) {
+        // Update task to failed state
+        setDownloadTasks((prev) =>
+          prev.map((task) =>
+            task.id === pendingTask.id
+              ? {
+                  ...task,
+                  status: "failed",
+                  message:
+                    error instanceof Error ? error.message : "Unknown error",
+                }
+              : task,
+          ),
+        );
+        alert(
+          `Download failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
+      }
+    });
+  };
+
+  const removeDownloadTask = (taskId: string) => {
+    setDownloadTasks((prev) => prev.filter((task) => task.id !== taskId));
   };
 
   const addMagnetUrl = () => {
@@ -205,10 +182,6 @@ export default function MagnetDownloadPage() {
     const newUrls = [...magnetUrls];
     newUrls[index] = value;
     setMagnetUrls(newUrls);
-  };
-
-  const removeDownloadTask = (taskId: string) => {
-    setDownloadTasks((prev) => prev.filter((task) => task.id !== taskId));
   };
 
   const getStatusBadge = (status: DownloadTask["status"]) => {
@@ -409,7 +382,10 @@ export default function MagnetDownloadPage() {
 
                         {task.message && (
                           <div className="text-sm">
-                            <strong>Message:</strong> {task.message}
+                            <strong>Message:</strong>{" "}
+                            <span className="break-words overflow-wrap-anywhere">
+                              {task.message}
+                            </span>
                           </div>
                         )}
 
@@ -523,8 +499,8 @@ export default function MagnetDownloadPage() {
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={downloadMutation.isPending}>
-                {downloadMutation.isPending ? (
+              <Button type="submit" disabled={isPending}>
+                {isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Downloading...
